@@ -107,10 +107,7 @@ function convertOpenAPIParamsToJSONSchema(
       if (param.schema) {
         schema = spec.getSchema(param.schema);
         // eslint-disable-next-line no-param-reassign
-        jsonSchema.properties[param.name] = convertOpenAPISchemaToJSONSchema(
-          schema,
-          spec
-        );
+        jsonSchema.properties[param.name] = convertOpenAPISchemaToJSONSchema(schema);
       } else if (param.content) {
         const mediaTypeSchema = Object.values(param.content)[0].schema;
         if (mediaTypeSchema) {
@@ -123,10 +120,7 @@ function convertOpenAPIParamsToJSONSchema(
           schema.description = param.description ?? "";
         }
         // eslint-disable-next-line no-param-reassign
-        jsonSchema.properties[param.name] = convertOpenAPISchemaToJSONSchema(
-          schema,
-          spec
-        );
+        jsonSchema.properties[param.name] = convertOpenAPISchemaToJSONSchema(schema);
       } else {
         return jsonSchema;
       }
@@ -152,41 +146,9 @@ function convertOpenAPIParamsToJSONSchema(
  * @returns The JSON schema representation of the OpenAPI schema.
  */
 function convertOpenAPISchemaToJSONSchema(
-  schema: OpenAPIV3_1.SchemaObject,
-  spec: OpenAPISpec
-) {
-  if (schema.type !== "object" && schema.type !== "array") {
-    return {
-      type: schema.type ?? "string",
-    } as JsonSchema7Type;
-  }
-  return Object.keys(schema.properties ?? {}).reduce(
-    (jsonSchema: JsonSchema7ObjectType, propertyName) => {
-      if (!schema.properties) {
-        return jsonSchema;
-      }
-      const openAPIProperty = spec.getSchema(schema.properties[propertyName]);
-      if (openAPIProperty.type === undefined) {
-        return jsonSchema;
-      }
-      // eslint-disable-next-line no-param-reassign
-      jsonSchema.properties[propertyName] = {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        type: openAPIProperty.type as any,
-        description: openAPIProperty.description,
-      };
-      if (openAPIProperty.required && jsonSchema.required !== undefined) {
-        jsonSchema.required.push(propertyName);
-      }
-      return jsonSchema;
-    },
-    {
-      type: "object",
-      properties: {},
-      required: [],
-      additionalProperties: {},
-    }
-  );
+  schema: OpenAPIV3_1.SchemaObject
+): JsonSchema7Type {
+  return schema;
 }
 
 /**
@@ -258,10 +220,7 @@ function convertOpenAPISpecToOpenAIFunctions(spec: OpenAPISpec): {
         )) {
           if (mediaTypeObject.schema !== undefined) {
             const schema = spec.getSchema(mediaTypeObject.schema);
-            requestBodySchemas[mediaType] = convertOpenAPISchemaToJSONSchema(
-              schema,
-              spec
-            ) as JsonSchema7ObjectType;
+            requestBodySchemas[mediaType] = convertOpenAPISchemaToJSONSchema(schema) as JsonSchema7ObjectType;
           }
         }
         const mediaTypes = Object.keys(requestBodySchemas);
