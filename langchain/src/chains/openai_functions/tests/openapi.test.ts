@@ -8,99 +8,101 @@ import { JsonSchema7ArrayType } from "zod-to-json-schema/src/parsers/array.js";
 import { OpenAPISpec } from "../../../util/openapi.js";
 import { convertOpenAPISchemaToJSONSchema } from "../openapi.js";
 
-test("Test convert OpenAPI params to JSON Schema", async () => {
-  const spec = new OpenAPISpec({
-    "openapi": "3.1.0",
-    "info": {
-      "title": "A fake spec for testing",
-      "version": "0.0.1",
-    },
-    "paths": {
-      "/widgets": {
-        "post": {
-          "operationId": "createWidget",
-          "description": "Create a widget",
-          "parameters": [
-            {
-              "name": "stringParam",
-              "in": "query",
-              "schema": {
-                "type": "string"
-              }
-            },
-            {
-              "name": "objectParam",
-              "in": "query",
-              "schema": {
-                "type": "object",
-                "properties": {
-                  "foo": {
-                    "type": "string"
-                  },
-                  "bar": {
-                    "type": "number"
-                  }
-                }
-              }
-            },
-            {
-              "name": "stringArrayParam",
-              "in": "query",
-              "schema": {
-                "type": "array",
-                "items": {
+describe("OpenAPI spec to OpenAI functions", () => {
+  test("converts OpenAPI params to JSON Schema", () => {
+    const spec = new OpenAPISpec({
+      "openapi": "3.1.0",
+      "info": {
+        "title": "A fake spec for testing",
+        "version": "0.0.1",
+      },
+      "paths": {
+        "/widgets": {
+          "post": {
+            "operationId": "createWidget",
+            "description": "Create a widget",
+            "parameters": [
+              {
+                "name": "stringParam",
+                "in": "query",
+                "schema": {
                   "type": "string"
                 }
-              }
-            },
-            {
-              "name": "nestedObjectInArrayParam",
-              "in": "query",
-              "schema": {
-                "type": "array",
-                "items": {
+              },
+              {
+                "name": "objectParam",
+                "in": "query",
+                "schema": {
                   "type": "object",
                   "properties": {
-                    "baz": {
+                    "foo": {
+                      "type": "string"
+                    },
+                    "bar": {
                       "type": "number"
                     }
                   }
                 }
-              }
-            },
-            {
-              "name": "nestedArrayInObjectParam",
-              "in": "query",
-              "schema": {
-                "type": "object",
-                "properties": {
-                  "qux": {
-                    "type": "array",
-                    "items": {
-                      "type": "string"
+              },
+              {
+                "name": "stringArrayParam",
+                "in": "query",
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                }
+              },
+              {
+                "name": "nestedObjectInArrayParam",
+                "in": "query",
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "baz": {
+                        "type": "number"
+                      }
                     }
                   }
                 }
-              }
-            },
-            {
-              "name": "inceptionParam",
-              "in": "query",
-              "schema": {
-                "type": "array",
-                "items": {
+              },
+              {
+                "name": "nestedArrayInObjectParam",
+                "in": "query",
+                "schema": {
                   "type": "object",
                   "properties": {
-                    "nestedArray": {
+                    "qux": {
                       "type": "array",
                       "items": {
-                        "type": "object",
-                        "properties": {
-                          "nestedObject": {
-                            "type": "object",
-                            "properties": {
-                              "inception": {
-                                "type": "number"
+                        "type": "string"
+                      }
+                    }
+                  }
+                }
+              },
+              {
+                "name": "inceptionParam",
+                "in": "query",
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "nestedArray": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "nestedObject": {
+                              "type": "object",
+                              "properties": {
+                                "inception": {
+                                  "type": "number"
+                                }
                               }
                             }
                           }
@@ -110,17 +112,17 @@ test("Test convert OpenAPI params to JSON Schema", async () => {
                   }
                 }
               }
-            }
-          ],
-          "responses": {
-            "200": {
-              "description": "OK",
-              "content": {
-                "application/json": {
-                  "schema": {
-                    "properties": {
-                      "success": {
-                        "type": "boolean"
+            ],
+            "responses": {
+              "200": {
+                "description": "OK",
+                "content": {
+                  "application/json": {
+                    "schema": {
+                      "properties": {
+                        "success": {
+                          "type": "boolean"
+                        }
                       }
                     }
                   }
@@ -130,16 +132,141 @@ test("Test convert OpenAPI params to JSON Schema", async () => {
           }
         }
       }
+    });
+  
+    const op = spec.getOperation("/widgets", OpenAPIV3.HttpMethods.POST);
+    expect(op).not.toBeUndefined();
+    if (!op) {
+      throw new Error(`Operation not found`);
     }
+  
+    const stringParamSchema = convertOpenAPISchemaToJSONSchema(
+      getParamSchema(spec, op, "stringParam"),
+      spec,
+    );
+    expectType("string", stringParamSchema);
+  
+    const objectParamSchema = convertOpenAPISchemaToJSONSchema(
+      getParamSchema(spec, op, "objectParam"),
+      spec,
+    );
+    const typedObjectParamSchema = expectType("object", objectParamSchema);
+    expectType("string", typedObjectParamSchema.properties.foo);
+    expectType("number", typedObjectParamSchema.properties.bar);
+  
+    const stringArrayParamSchema = convertOpenAPISchemaToJSONSchema(
+      getParamSchema(spec, op, "stringArrayParam"),
+      spec,
+    );
+    const typedStringArrayParamSchema = expectType("array", stringArrayParamSchema);
+    expect(typedStringArrayParamSchema.items).not.toBeUndefined();
+    expectType("string", typedStringArrayParamSchema.items);
+  
+    const nestedObjectInArrayParamSchema = convertOpenAPISchemaToJSONSchema(
+      getParamSchema(spec, op, "nestedObjectInArrayParam"),
+      spec,
+    );
+    expectType("number",
+      expectType("object",
+        expectType("array", nestedObjectInArrayParamSchema).items
+      ).properties.baz
+    );
+  
+    const nestedArrayInObjectParamSchema = convertOpenAPISchemaToJSONSchema(
+      getParamSchema(spec, op, "nestedArrayInObjectParam"),
+      spec,
+    );
+    expectType("string",
+      expectType("array",
+        expectType("object", nestedArrayInObjectParamSchema).properties.qux
+      ).items
+    );
+  
+    const inceptionParamSchema = convertOpenAPISchemaToJSONSchema(
+      getParamSchema(spec, op, "inceptionParam"),
+      spec,
+    );
+    expectType("number",
+      expectType("object",
+        expectType("object",
+          expectType("array",
+            expectType("object",
+              expectType("array", inceptionParamSchema).items
+            ).properties.nestedArray
+          ).items
+        ).properties.nestedObject
+      ).properties.inception
+    );
   });
 
-  const createWidget = spec.getOperation("/widgets", OpenAPIV3.HttpMethods.POST);
-  expect(createWidget).not.toBeUndefined();
-  if (!createWidget) {
-    throw new Error(`Operation not found`);
-  }
+  test("handles circular references", () => {
+    const spec = new OpenAPISpec({
+      "openapi": "3.1.0",
+      "info": {
+        "title": "A fake spec for testing",
+        "version": "0.0.1",
+      },
+      "components": {
+        "schemas": {
+          "Node": {
+            "type": "object",
+            "properties": {
+              "children": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/Node"
+                }
+              }
+            }
+          }
+        }
+      },
+      "paths": {
+        "/nodes": {
+          "post": {
+            "operationId": "createNode",
+            "description": "Create a node",
+            "parameters": [
+              {
+                "name": "node",
+                "in": "query",
+                "schema": {
+                  "$ref": "#/components/schemas/Node"
+                }
+              }
+            ],
+            "responses": {
+              "200": {
+                "description": "OK",
+                "content": {
+                  "application/json": {
+                    "schema": {
+                      "$ref": "#/components/schemas/Node"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+    });
 
-  function getParamSchema(operation: OpenAPIV3_1.OperationObject, paramName: string) {
+    const op = spec.getOperation("/nodes", OpenAPIV3.HttpMethods.POST);
+    expect(op).not.toBeUndefined();
+    if (!op) {
+      throw new Error(`Operation not found`);
+    }
+
+    const circularSchema = convertOpenAPISchemaToJSONSchema(
+      getParamSchema(spec, op, "node"),
+      spec,
+    );
+
+    console.log(JSON.stringify(circularSchema));
+  });
+
+  function getParamSchema(spec: OpenAPISpec, operation: OpenAPIV3_1.OperationObject, paramName: string) {
     const param = spec.getParametersForOperation(operation).find((param) => param.name === paramName);
     if (!param) {
       throw new Error(`Param not found`);
@@ -163,62 +290,4 @@ test("Test convert OpenAPI params to JSON Schema", async () => {
     }
     return schema as TypeMap[T];
   }
-
-  const stringParamSchema = convertOpenAPISchemaToJSONSchema(
-    getParamSchema(createWidget, "stringParam"),
-    spec,
-  );
-  expectType("string", stringParamSchema);
-
-  const objectParamSchema = convertOpenAPISchemaToJSONSchema(
-    getParamSchema(createWidget, "objectParam"),
-    spec,
-  );
-  const typedObjectParamSchema = expectType("object", objectParamSchema);
-  expectType("string", typedObjectParamSchema.properties.foo);
-  expectType("number", typedObjectParamSchema.properties.bar);
-
-  const stringArrayParamSchema = convertOpenAPISchemaToJSONSchema(
-    getParamSchema(createWidget, "stringArrayParam"),
-    spec,
-  );
-  const typedStringArrayParamSchema = expectType("array", stringArrayParamSchema);
-  expect(typedStringArrayParamSchema.items).not.toBeUndefined();
-  expectType("string", typedStringArrayParamSchema.items);
-
-  const nestedObjectInArrayParamSchema = convertOpenAPISchemaToJSONSchema(
-    getParamSchema(createWidget, "nestedObjectInArrayParam"),
-    spec,
-  );
-  expectType("number",
-    expectType("object",
-      expectType("array", nestedObjectInArrayParamSchema).items
-    ).properties.baz
-  );
-
-  const nestedArrayInObjectParamSchema = convertOpenAPISchemaToJSONSchema(
-    getParamSchema(createWidget, "nestedArrayInObjectParam"),
-    spec,
-  );
-  expectType("string",
-    expectType("array",
-      expectType("object", nestedArrayInObjectParamSchema).properties.qux
-    ).items
-  );
-
-  const inceptionParamSchema = convertOpenAPISchemaToJSONSchema(
-    getParamSchema(createWidget, "inceptionParam"),
-    spec,
-  );
-  expectType("number",
-    expectType("object",
-      expectType("object",
-        expectType("array",
-          expectType("object",
-            expectType("array", inceptionParamSchema).items
-          ).properties.nestedArray
-        ).items
-      ).properties.nestedObject
-    ).properties.inception
-  );
 });
